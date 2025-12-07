@@ -1,0 +1,9 @@
+{
+  "name": "AI All in One ",
+  "description": "A comprehensive showcase of Google's Gemini API capabilities including Multimodal Live API, Veo Video Generation, High-Fidelity Image Generation, Grounding, and more.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
