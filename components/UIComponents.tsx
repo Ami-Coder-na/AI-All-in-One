@@ -69,10 +69,12 @@ export const Loader: React.FC = () => (
 );
 
 export const FileUpload: React.FC<{
-  onFileSelect: (file: File) => void;
+  onFileSelect?: (file: File) => void;
+  onFilesSelect?: (files: File[]) => void;
   accept: string;
   label?: string;
-}> = ({ onFileSelect, accept, label = "Upload File" }) => {
+  multiple?: boolean;
+}> = ({ onFileSelect, onFilesSelect, accept, label = "Upload File", multiple = false }) => {
   return (
     <label className="group relative cursor-pointer flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-xl hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 overflow-hidden">
       <div className="flex flex-col items-center justify-center pt-5 pb-6 relative z-10 transition-transform group-hover:scale-105">
@@ -80,11 +82,21 @@ export const FileUpload: React.FC<{
           <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
         </svg>
         <p className="mb-1 text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">{label}</p>
-        <p className="text-xs text-slate-400">Click to browse</p>
+        <p className="text-xs text-slate-400">{multiple ? 'Drag & drop multiple files' : 'Click to browse'}</p>
       </div>
-      <input type="file" className="hidden" accept={accept} onChange={(e) => {
-        if (e.target.files?.[0]) onFileSelect(e.target.files[0]);
-      }} />
+      <input 
+        type="file" 
+        className="hidden" 
+        accept={accept} 
+        multiple={multiple}
+        onChange={(e) => {
+          if (multiple && e.target.files && onFilesSelect) {
+            onFilesSelect(Array.from(e.target.files));
+          } else if (!multiple && e.target.files?.[0] && onFileSelect) {
+            onFileSelect(e.target.files[0]);
+          }
+        }} 
+      />
     </label>
   );
 };
