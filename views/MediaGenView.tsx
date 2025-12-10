@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { generateProImage, editImage, generateVeoVideo, generateImagen } from '../services/geminiService';
 import { Button, Input, Select, Card, FileUpload, Loader } from '../components/UIComponents';
 import { AspectRatio, ImageSize } from '../types';
@@ -31,6 +32,7 @@ export const MediaGenView: React.FC = () => {
   const [clips, setClips] = useState<VideoClip[]>([]);
   const [overlayText, setOverlayText] = useState('');
   const [renderingProgress, setRenderingProgress] = useState(0);
+  const [activePreviewClip, setActivePreviewClip] = useState<VideoClip | null>(null);
 
   const handleFile = (file: File) => {
     // For Image Edit / Video Gen
@@ -47,23 +49,40 @@ export const MediaGenView: React.FC = () => {
     video.preload = 'metadata';
     video.onloadedmetadata = () => {
       URL.revokeObjectURL(video.src);
-      setClips(prev => [...prev, {
+      const newClip: VideoClip = {
         id: Math.random().toString(36).substr(2, 9),
         file,
         start: 0,
         end: video.duration,
         duration: video.duration
-      }]);
+      };
+      setClips(prev => [...prev, newClip]);
+      setActivePreviewClip(newClip); // Auto preview new clip
     };
     video.src = URL.createObjectURL(file);
   };
 
-  const removeClip = (id: string) => {
+  const removeClip = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setClips(prev => prev.filter(c => c.id !== id));
+    if (activePreviewClip?.id === id) setActivePreviewClip(null);
   };
 
   const updateClip = (id: string, updates: Partial<VideoClip>) => {
     setClips(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const moveClip = (index: number, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (direction === 'up' && index > 0) {
+      const newClips = [...clips];
+      [newClips[index - 1], newClips[index]] = [newClips[index], newClips[index - 1]];
+      setClips(newClips);
+    } else if (direction === 'down' && index < clips.length - 1) {
+      const newClips = [...clips];
+      [newClips[index + 1], newClips[index]] = [newClips[index], newClips[index + 1]];
+      setClips(newClips);
+    }
   };
 
   const handleRenderVideo = async () => {
@@ -73,6 +92,7 @@ export const MediaGenView: React.FC = () => {
     setResultUrl(null);
     setResultType('video');
     setError(null);
+    setActivePreviewClip(null);
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -170,6 +190,7 @@ export const MediaGenView: React.FC = () => {
     setLoading(true);
     setError(null);
     setResultUrl(null);
+    setActivePreviewClip(null);
 
     try {
       if (tab === 'image-gen') {
@@ -223,6 +244,7 @@ export const MediaGenView: React.FC = () => {
                   setResultUrl(null); 
                   setError(null);
                   setRenderingProgress(0);
+                  setActivePreviewClip(null);
               }}
               className={`flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
                 tab === item.id 
@@ -251,42 +273,78 @@ export const MediaGenView: React.FC = () => {
                         
                         {clips.length > 0 && (
                             <div className="space-y-3">
-                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">2. Trim & Arrange</label>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">2. Timeline ({clips.length} clips)</label>
                                 <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     {clips.map((clip, idx) => (
-                                        <div key={clip.id} className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 relative group">
+                                        <div 
+                                          key={clip.id} 
+                                          onClick={() => setActivePreviewClip(clip)}
+                                          className={`p-3 rounded-lg border relative group transition-all cursor-pointer ${
+                                            activePreviewClip?.id === clip.id 
+                                              ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500 shadow-md' 
+                                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                                          }`}
+                                        >
                                             <div className="flex justify-between items-center mb-2">
-                                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">{clip.file.name}</span>
-                                                <button onClick={() => removeClip(clip.id)} className="text-red-400 hover:text-red-500 text-xs">Remove</button>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <label className="text-[10px] text-slate-500 uppercase">Start (s)</label>
-                                                    <input 
-                                                      type="number" 
-                                                      min={0} 
-                                                      max={clip.end} 
-                                                      step={0.1}
-                                                      value={clip.start} 
-                                                      onChange={(e) => updateClip(clip.id, { start: Number(e.target.value) })}
-                                                      className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1"
-                                                    />
+                                                <div className="flex items-center gap-2">
+                                                  <span className="w-5 h-5 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full text-[10px] font-bold">
+                                                    {idx + 1}
+                                                  </span>
+                                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[120px]" title={clip.file.name}>{clip.file.name}</span>
                                                 </div>
-                                                <div>
-                                                    <label className="text-[10px] text-slate-500 uppercase">End (s)</label>
-                                                    <input 
-                                                      type="number" 
-                                                      min={clip.start} 
-                                                      max={clip.duration} 
-                                                      step={0.1}
-                                                      value={clip.end} 
-                                                      onChange={(e) => updateClip(clip.id, { end: Number(e.target.value) })}
-                                                      className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1"
-                                                    />
+                                                
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                   <button onClick={(e) => moveClip(idx, 'up', e)} disabled={idx === 0} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30">
+                                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg>
+                                                   </button>
+                                                   <button onClick={(e) => moveClip(idx, 'down', e)} disabled={idx === clips.length - 1} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30">
+                                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+                                                   </button>
+                                                   <button onClick={(e) => removeClip(clip.id, e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded ml-1">
+                                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                                   </button>
                                                 </div>
                                             </div>
-                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-bold z-10">
-                                                {idx + 1}
+                                            
+                                            {/* Trimming Inputs */}
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase">Start</label>
+                                                    <div className="flex items-center bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                                                      <input 
+                                                        type="number" min={0} max={clip.end} step={0.1}
+                                                        value={clip.start} 
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) => updateClip(clip.id, { start: Number(e.target.value) })}
+                                                        className="w-full text-xs bg-transparent p-1 focus:outline-none"
+                                                      />
+                                                      <span className="text-[10px] text-slate-400 pr-1">s</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase">End</label>
+                                                    <div className="flex items-center bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                                                      <input 
+                                                        type="number" min={clip.start} max={clip.duration} step={0.1}
+                                                        value={clip.end} 
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) => updateClip(clip.id, { end: Number(e.target.value) })}
+                                                        className="w-full text-xs bg-transparent p-1 focus:outline-none"
+                                                      />
+                                                      <span className="text-[10px] text-slate-400 pr-1">s</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Visual Bar */}
+                                            <div className="mt-2 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                <div 
+                                                  className="absolute h-full bg-blue-500 rounded-full"
+                                                  style={{ 
+                                                    left: `${(clip.start / clip.duration) * 100}%`, 
+                                                    width: `${((clip.end - clip.start) / clip.duration) * 100}%` 
+                                                  }}
+                                                />
                                             </div>
                                         </div>
                                     ))}
@@ -301,7 +359,7 @@ export const MediaGenView: React.FC = () => {
                     <Button onClick={handleRenderVideo} disabled={loading || clips.length === 0} className="w-full py-4 text-lg shadow-blue-500/25">
                         {loading ? <Loader /> : (
                             <span className="flex items-center gap-2">
-                                {ICONS.Video} Render Video
+                                {ICONS.Video} Render Final Video
                             </span>
                         )}
                     </Button>
@@ -407,18 +465,32 @@ export const MediaGenView: React.FC = () => {
                  </div>
               )}
               
-              {!loading && !resultUrl && (
+              {!loading && !resultUrl && !activePreviewClip && (
                   <div className="text-center p-8 opacity-40 group-hover:opacity-60 transition-opacity">
                       <div className="w-32 h-32 mx-auto mb-4 border-4 border-dashed border-slate-400 rounded-3xl flex items-center justify-center">
                           <span className="text-4xl text-slate-400">+</span>
                       </div>
                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Canvas Empty</h3>
                       <p className="text-slate-500">
-                          {tab === 'video-edit' ? 'Add clips and click Render' : 'Configure parameters and hit generate'}
+                          {tab === 'video-edit' ? 'Select a clip to preview or Render to finish' : 'Configure parameters and hit generate'}
                       </p>
                   </div>
               )}
+
+              {/* Clip Source Preview */}
+              {!loading && !resultUrl && activePreviewClip && tab === 'video-edit' && (
+                 <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+                    <div className="absolute top-4 left-4 z-20 bg-blue-500 text-white text-xs px-2 py-1 rounded">Source Preview</div>
+                    <video 
+                        src={URL.createObjectURL(activePreviewClip.file)} 
+                        controls 
+                        className="max-w-full max-h-full rounded-lg shadow-2xl" 
+                    />
+                    <div className="mt-2 text-xs text-slate-500">Showing raw clip: {activePreviewClip.file.name}</div>
+                 </div>
+              )}
               
+              {/* Final Result Display */}
               {!loading && resultUrl && (
                  <div className="relative w-full h-full flex items-center justify-center p-4">
                     {resultType === 'image' ? (
