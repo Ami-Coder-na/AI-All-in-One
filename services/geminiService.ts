@@ -89,7 +89,7 @@ export const generateProImage = async (prompt: string, aspectRatio: AspectRatio,
 export const generateImagen = async (prompt: string, aspectRatio: string) => {
   const ai = await getClient(true);
   const response = await ai.models.generateImages({
-    model: 'imagen-3.0-generate-001',
+    model: 'imagen-4.0-generate-001',
     prompt,
     config: {
       numberOfImages: 1,
