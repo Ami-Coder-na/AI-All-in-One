@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { AppSection } from './types';
+import { AppSection, User } from './types';
 import { ChatView } from './views/ChatView';
 import { MediaGenView } from './views/MediaGenView';
 import { AnalysisView } from './views/AnalysisView';
 import { LiveView } from './views/LiveView';
+import { LoginView } from './views/LoginView';
+import { SettingsView } from './views/SettingsView';
 import { ICONS } from './constants';
 
 const App: React.FC = () => {
   const [section, setSection] = useState<AppSection>(AppSection.DASHBOARD);
   const [darkMode, setDarkMode] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -19,6 +23,16 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   const toggleTheme = () => setDarkMode(!darkMode);
+  
+  const handleLogout = () => {
+    setUser(null);
+    setSection(AppSection.DASHBOARD);
+  };
+
+  // Login Guard
+  if (!user) {
+    return <LoginView onLogin={setUser} />;
+  }
 
   const NavItem: React.FC<{ s: AppSection; label: string; icon: React.ReactNode; desc: string }> = ({ s, label, icon, desc }) => {
     const isActive = section === s;
@@ -77,7 +91,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 tracking-tight">Gemini Omni</h1>
+              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 tracking-tight">R Ai</h1>
               <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-semibold">Enterprise Demo</p>
             </div>
         </div>
@@ -101,24 +115,34 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        <div className="mt-auto pt-6 border-t border-slate-200/50 dark:border-white/5">
-          <div className="flex items-center justify-between bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-white/5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800">
-             <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${darkMode ? 'bg-slate-700 text-yellow-400' : 'bg-white text-orange-500 shadow-sm'}`}>
-                  {darkMode ? ICONS.Moon : ICONS.Sun}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Dark Mode</span>
-                  <span className="text-[10px] text-slate-400">{darkMode ? 'On' : 'Off'}</span>
-                </div>
+        {/* Sidebar Footer (User Profile) */}
+        <div className="mt-auto pt-6 border-t border-slate-200/50 dark:border-white/5 relative">
+          <button 
+             onClick={() => setIsProfileOpen(!isProfileOpen)}
+             className="w-full flex items-center gap-3 bg-slate-100/50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-white/5 transition-all hover:bg-slate-200 dark:hover:bg-slate-800 relative z-20"
+          >
+             <img src={user.avatar} alt="User" className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-600" />
+             <div className="flex flex-col items-start flex-1 overflow-hidden">
+               <span className="text-sm font-bold text-slate-900 dark:text-white truncate w-full text-left">{user.name}</span>
+               <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-full text-left">{user.role}</span>
              </div>
-             <button 
-                onClick={toggleTheme}
-                className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 focus:outline-none ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}
-             >
-                <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${darkMode ? 'translate-x-5' : 'translate-x-0'}`}></div>
-             </button>
-          </div>
+             <div className="text-slate-400">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}><path d="m18 15-6-6-6 6"/></svg>
+             </div>
+          </button>
+          
+          {/* Popover Menu */}
+          {isProfileOpen && (
+             <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 p-2 space-y-1 animate-in slide-in-from-bottom-2 fade-in z-10">
+                <button onClick={() => { setSection(AppSection.SETTINGS); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors">
+                   {ICONS.Settings} Settings & Profile
+                </button>
+                <div className="h-px bg-slate-200 dark:bg-white/5 mx-2 my-1"></div>
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium text-red-600 dark:text-red-400 transition-colors">
+                   {ICONS.LogOut} Log Out
+                </button>
+             </div>
+          )}
         </div>
       </div>
 
@@ -128,10 +152,10 @@ const App: React.FC = () => {
             <div className="p-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg text-white">
               {ICONS.Spark}
             </div>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">Gemini Omni</span>
+            <span className="font-bold text-lg text-slate-900 dark:text-white">R Ai</span>
          </div>
-         <button onClick={toggleTheme} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-            {darkMode ? ICONS.Sun : ICONS.Moon}
+         <button onClick={() => setSection(AppSection.SETTINGS)} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors overflow-hidden border border-slate-200 dark:border-slate-700">
+            <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />
          </button>
       </div>
       
@@ -163,8 +187,10 @@ const App: React.FC = () => {
         <header className="h-20 flex items-center justify-between px-8 hidden md:flex z-10 border-b border-slate-200/50 dark:border-white/5 bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm">
            <div>
              <h2 className="text-2xl font-bold text-slate-900 dark:text-white capitalize tracking-tight flex items-center gap-3">
-               {section.replace('_', ' ')}
-               <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700">Beta</span>
+               {section === AppSection.SETTINGS ? 'User Profile' : section.replace('_', ' ')}
+               {section !== AppSection.SETTINGS && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700">Beta</span>
+               )}
              </h2>
            </div>
            <div className="flex items-center gap-4">
@@ -190,7 +216,7 @@ const App: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse"></span>
                         New: Veo & Imagen 3 Integration
                       </div>
-                      <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Welcome to <br/>Gemini Omni.</h1>
+                      <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Welcome back, <br/>{user.name.split(' ')[0]}.</h1>
                       <p className="text-blue-100 max-w-2xl text-lg mb-8 leading-relaxed">Experience the next generation of multimodal AI. Generate high-fidelity media, converse seamlessly in real-time, and analyze complex data streams with Gemini 2.5 and 3.0 models.</p>
                       <div className="flex flex-wrap gap-4">
                         <button onClick={() => setSection(AppSection.CHAT)} className="px-6 py-3.5 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2">
@@ -236,6 +262,7 @@ const App: React.FC = () => {
            {section === AppSection.LIVE && <LiveView />}
            {section === AppSection.MEDIA_GEN && <MediaGenView />}
            {section === AppSection.ANALYSIS && <AnalysisView />}
+           {section === AppSection.SETTINGS && <SettingsView user={user} darkMode={darkMode} toggleTheme={toggleTheme} onLogout={handleLogout} />}
         </div>
       </main>
     </div>

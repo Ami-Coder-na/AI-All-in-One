@@ -17,7 +17,8 @@ export enum AppSection {
   LIVE = 'live',
   MEDIA_GEN = 'media_gen',
   ANALYSIS = 'analysis',
-  AUDIO = 'audio'
+  AUDIO = 'audio',
+  SETTINGS = 'settings'
 }
 
 export interface ChatMessage {
@@ -32,6 +33,13 @@ export interface GeneratedMedia {
   type: 'image' | 'video';
   url: string;
   prompt: string;
+}
+
+export interface User {
+  username: string;
+  name: string;
+  avatar: string;
+  role: string;
 }
 
 export type AspectRatio = "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "9:16" | "16:9" | "21:9";
